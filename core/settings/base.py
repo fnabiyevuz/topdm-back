@@ -36,7 +36,9 @@ DJANGO_APPS = [
 ]
 
 CUSTOM_APPS = [
-    # "apps.common",
+    "apps.common",
+    "apps.user",
+    "apps.estate",
 ]
 
 THIRD_PARTY_APPS = [
@@ -180,3 +182,5 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': True,
 }
+
+SECRET_ENCRYPTION_KEY = os.getenv("SECRET_ENCRYPTION_KEY")

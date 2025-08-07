@@ -6,7 +6,17 @@ from django.db import models
 from apps.common.managers import SoftDeleteManager
 
 
+class Project(models.IntegerChoices):
+    ESTATE = 1, 'Real Estate'
+    VEHICLE = 2, 'Vehicle'
+    PHONE = 3, 'Phone'
+    ELECTRONIC = 4, 'Electronic'
+    WORKER = 5, 'Worker'
+    SERVICE = 6, 'Service'
+
+
 class BaseModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     is_active = models.BooleanField(default=True)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -18,20 +28,24 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
         ordering = ('-created_at',)
+        indexes = (
+            models.Index(fields=['-created_at']),
+        )
 
     def delete(self, using=None, keep_parents=False):
         self.is_deleted = True
-        self.save()
+        self.save(update_fields=["is_deleted"])
 
     def restore(self):
         self.is_deleted = False
-        self.save()
+        self.save(update_fields=["is_deleted"])
 
     def hard_delete(self, using=None, keep_parents=False):
         super().delete(using=using, keep_parents=keep_parents)
 
 
 class Country(BaseModel):
+    legacy_id = models.PositiveSmallIntegerField(null=True, blank=True)
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
@@ -39,6 +53,8 @@ class Country(BaseModel):
 
 
 class Region(BaseModel):
+    legacy_id = models.PositiveSmallIntegerField(null=True, blank=True)
+    pk = models.PositiveSmallIntegerField(null=True, blank=True)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name="regions")
     name = models.CharField(max_length=100)
 
@@ -46,10 +62,11 @@ class Region(BaseModel):
         unique_together = ("country", "name")
 
     def __str__(self):
-        return f"{self.name}, {self.country.name}"
+        return self.name
 
 
 class District(BaseModel):
+    legacy_id = models.PositiveSmallIntegerField(null=True, blank=True)
     region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name="districts")
     name = models.CharField(max_length=100)
 
@@ -57,10 +74,11 @@ class District(BaseModel):
         unique_together = ("region", "name")
 
     def __str__(self):
-        return f"{self.name}, {self.region.name}"
+        return self.name
 
 
 class Neighborhood(BaseModel):
+    legacy_id = models.PositiveSmallIntegerField(null=True, blank=True)
     district = models.ForeignKey(District, on_delete=models.CASCADE, related_name="neighborhoods")
     name = models.CharField(max_length=100)
 
@@ -68,7 +86,7 @@ class Neighborhood(BaseModel):
         unique_together = ("district", "name")
 
     def __str__(self):
-        return f"{self.name}, {self.district.name}"
+        return self.name
 
 
 class FileType(models.IntegerChoices):
@@ -79,34 +97,29 @@ class FileType(models.IntegerChoices):
     OTHER = 5, 'Other'
 
 
+def upload_to(instance, filename):
+    return f"media/{instance.file_type}/{uuid.uuid4()}_{filename}"
+
+
 class Media(BaseModel):
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    file = models.FileField(upload_to='media/')
+    file = models.FileField(upload_to=upload_to)
     file_type = models.IntegerField(choices=FileType.choices, default=FileType.OTHER)
     file_name = models.CharField(max_length=255, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # Set file_name if empty
-        if self.file and not self.file_name:
-            self.file_name = self.file.name
-
-        # Determine file_type from MIME type
         if self.file:
+            self.file_name = self.file_name or self.file.name
+
             content_type, _ = mimetypes.guess_type(self.file.name)
-            if content_type:
-                main_type = content_type.split('/')[0]
-                if main_type == 'image':
-                    self.file_type = FileType.IMAGE
-                elif main_type == 'video':
-                    self.file_type = FileType.VIDEO
-                elif main_type == 'audio':
-                    self.file_type = FileType.AUDIO
-                elif main_type in ['application', 'text']:
-                    self.file_type = FileType.DOCUMENT
-                else:
-                    self.file_type = FileType.OTHER
-            else:
-                self.file_type = FileType.OTHER
+            main_type = content_type.split('/')[0] if content_type else None
+
+            self.file_type = {
+                'image': FileType.IMAGE,
+                'video': FileType.VIDEO,
+                'audio': FileType.AUDIO,
+                'application': FileType.DOCUMENT,
+                'text': FileType.DOCUMENT,
+            }.get(main_type, FileType.OTHER)
 
         super().save(*args, **kwargs)
 

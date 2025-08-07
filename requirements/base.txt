@@ -16,3 +16,4 @@ djangorestframework_simplejwt
 django-phonenumber-field
 phonenumbers
 requests
+cryptography

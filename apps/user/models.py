@@ -7,6 +7,7 @@ from django_ckeditor_5.fields import CKEditor5Field
 from phonenumber_field.modelfields import PhoneNumberField
 
 from apps.common.models import BaseModel
+from apps.user.fields import EncryptedTextField
 
 
 class Role(models.IntegerChoices):
@@ -21,20 +22,22 @@ class Gender(models.IntegerChoices):
 
 
 class User(AbstractUser, BaseModel):
-    id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, primary_key=True)
-
     middle_name = models.CharField(max_length=150, blank=True)
 
-    primary_phone = PhoneNumberField(null=True, unique=True, db_index=True)
-    secondary_phone = PhoneNumberField(null=True, unique=True, db_index=True)
+    primary_phone = PhoneNumberField(null=True, db_index=True)
+    secondary_phone = PhoneNumberField(null=True, db_index=True)
 
-    avatar = models.ForeignKey("common.Media", on_delete=models.SET_NULL, null=True, blank=True)
+    avatar = models.ForeignKey('common.Media', on_delete=models.SET_NULL, null=True, blank=True)
 
     tg_id = models.BigIntegerField(null=True, blank=True, db_index=True)
     tg_username = models.CharField(max_length=70, null=True, blank=True, db_index=True)
 
     gender = models.IntegerField(choices=Gender.choices, null=True, blank=True)
     role = models.IntegerField(choices=Role.choices, default=Role.CLIENT)
+
+    country = models.ForeignKey('common.Country', on_delete=models.SET_NULL, null=True, blank=True)
+    region = models.ForeignKey('common.Region', on_delete=models.SET_NULL, null=True, blank=True)
+    district = models.ForeignKey('common.District', on_delete=models.SET_NULL, null=True, blank=True)
 
     bio = CKEditor5Field(validators=[MaxLengthValidator(500)], null=True, blank=True)
 
@@ -54,13 +57,12 @@ class UserDevice(BaseModel):
     user = models.ForeignKey("user.User", on_delete=models.SET_NULL, null=True, related_name="devices")
     device_name = models.CharField(max_length=255)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
-    refresh_token = models.TextField()
+    refresh_token = EncryptedTextField()
     last_login = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.username if self.user else 'Unknown'} - {self.device_name}"
+        return f"{self.user or 'Unknown'} - {self.device_name}"
 
     class Meta:
-        ordering = ['-last_login']
         verbose_name = "User Device"
         verbose_name_plural = "User Devices"
