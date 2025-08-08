@@ -1,8 +1,9 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
-from apps.common.models import BaseModel
+from apps.common.models import BaseModel, Project
 
 
 class Currency(models.IntegerChoices):
@@ -53,11 +54,23 @@ class Ads(BaseModel):
     expiry_date = models.DateTimeField(null=True, blank=True)
 
 
-class Image(models.Model):
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveBigIntegerField()
+class GenericBaseModel(BaseModel):
+    project = models.IntegerField(choices=Project.choices, null=True)
+    user = models.ForeignKey("user.User", on_delete=models.CASCADE)
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, db_index=True)
+    object_id = models.PositiveBigIntegerField(db_index=True)
     content_object = GenericForeignKey("content_type", "object_id")
 
+    class Meta:
+        abstract = True
+        indexes = [
+            models.Index(fields=["content_type", "object_id"]),
+            models.Index(fields=["user", "content_type", "object_id"]),
+        ]
+
+
+class Image(GenericBaseModel):
     image = models.ForeignKey("common.Media", on_delete=models.CASCADE)
     is_main = models.BooleanField(default=False)
 
@@ -65,16 +78,9 @@ class Image(models.Model):
         return f"Image on {self.content_type.model} for (ID {self.object_id})"
 
 
-class Comment(models.Model):
-    user = models.ForeignKey("user.User", on_delete=models.CASCADE)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveBigIntegerField()
-    content_object = GenericForeignKey("content_type", "object_id")
-
+class Comment(GenericBaseModel):
     parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies")
     comment = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -83,70 +89,46 @@ class Comment(models.Model):
         return f"Commented by {self.user} on {self.content_type.model} (ID {self.object_id})"
 
 
-class Like(models.Model):
-    user = models.ForeignKey("user.User", on_delete=models.CASCADE)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveBigIntegerField()
-    content_object = GenericForeignKey("content_type", "object_id")
-
-    created_at = models.DateTimeField(auto_now_add=True)
+class Like(GenericBaseModel):
 
     class Meta:
-        unique_together = ("user", "content_type", "object_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content_type", "object_id"],
+                name="unique_like_per_user_object"
+            )
+        ]
 
     def __str__(self):
-        return f"Liked  by {self.user} on {self.content_type.model} (ID {self.object_id})"
+        return f"Liked by {self.user} on {self.content_type.model} (ID {self.object_id})"
 
 
-class View(models.Model):
-    user = models.ForeignKey("user.User", on_delete=models.SET_NULL, null=True, blank=True)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveBigIntegerField()
-    content_object = GenericForeignKey("content_type", "object_id")
-
+class View(GenericBaseModel):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'content_type', 'object_id')  # foydalanuvchi har bir obyektni faqat 1 marta ko'radi
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content_type", "object_id"],
+                name="unique_view_per_user_object"
+            )
+        ]
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Viewed  by {self.user} on {self.content_type.model} (ID {self.object_id})"
+        return f"Viewed by {self.user} on {self.content_type.model} (ID {self.object_id})"
 
 
-class Share(models.Model):
-    user = models.ForeignKey("user.User", on_delete=models.SET_NULL, null=True, blank=True)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveBigIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-
-    platform = models.CharField(max_length=50, blank=True, null=True)  # masalan: "telegram", "whatsapp"
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
+class Bookmark(GenericBaseModel):
 
     class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"Shared  by {self.user} on {self.content_type.model} (ID {self.object_id})"
-
-
-class Bookmark(models.Model):
-    user = models.ForeignKey("user.User", on_delete=models.CASCADE)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveBigIntegerField()
-    content_object = GenericForeignKey("content_type", "object_id")
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ("user", "content_type", "object_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content_type", "object_id"],
+                name="unique_bookmark_per_user_object"
+            )
+        ]
 
     def __str__(self):
         return f"Bookmarked by {self.user} on {self.content_type.model} (ID {self.object_id})"
@@ -161,19 +143,34 @@ class ReportReason(models.IntegerChoices):
     OTHER = 5, 'Other'
 
 
-class Report(models.Model):
-    user = models.ForeignKey("user.User", on_delete=models.CASCADE)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveBigIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-
+class Report(GenericBaseModel):
     reason = models.IntegerField(choices=ReportReason.choices, default=ReportReason.OTHER)
     description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "content_type", "object_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content_type", "object_id"],
+                name="unique_report_per_user_object"
+            )
+        ]
 
     def __str__(self):
         return f"Report by {self.user} on {self.content_type.model} (ID {self.object_id})"
+
+
+class Rating(GenericBaseModel):
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content_type", "object_id"],
+                name="unique_rating_per_user_object"
+            )
+        ]
+
+    def __str__(self):
+        return f"Rating by {self.user} on {self.content_type.model} (ID {self.object_id})"

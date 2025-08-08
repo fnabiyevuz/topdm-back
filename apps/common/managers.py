@@ -1,15 +1,17 @@
 from django.db import models
 
+from apps.common.utils import tashkent_now
+
 
 class SoftDeleteQuerySet(models.QuerySet):
     def delete(self):
-        return super().update(is_deleted=True)
+        return super().update(is_deleted=True, updated_at=tashkent_now())
 
     def hard_delete(self):
         return super().delete()
 
     def restore(self):
-        return self.update(is_deleted=False)
+        return self.update(is_deleted=False, updated_at=tashkent_now())
 
 
 class SoftDeleteManager(models.Manager):

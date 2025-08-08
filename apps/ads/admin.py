@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Image, Comment, Like, View, Share, Bookmark, Report
+from .models import Image, Comment, Like, View, Bookmark, Report
 
 
 @admin.register(Image)
@@ -35,15 +35,6 @@ class LikeAdmin(admin.ModelAdmin):
 
 @admin.register(View)
 class ViewAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'content_type', 'object_id', 'created_at')
-    readonly_fields = ('content_object',)
-
-    def content_object(self, obj):
-        return obj.content_object
-
-
-@admin.register(Share)
-class ShareAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'content_type', 'object_id', 'created_at')
     readonly_fields = ('content_object',)
 

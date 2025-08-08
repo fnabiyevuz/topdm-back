@@ -1,3 +1,13 @@
+topdim:
+  core # main project
+  apps:
+    common
+    ads
+    user
+    estate
+    master
+
+
 # Django-Boilerplate
 
 Django-Boilerplate for start a new project

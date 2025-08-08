@@ -1,12 +1,11 @@
-import uuid
-
 from django.contrib.auth.models import AbstractUser
+from django.contrib.contenttypes.fields import GenericRelation
 from django.core.validators import MaxLengthValidator
 from django.db import models
 from django_ckeditor_5.fields import CKEditor5Field
 from phonenumber_field.modelfields import PhoneNumberField
 
-from apps.common.models import BaseModel
+from apps.common.models import BaseModel, Project
 from apps.user.fields import EncryptedTextField
 
 
@@ -22,10 +21,12 @@ class Gender(models.IntegerChoices):
 
 
 class User(AbstractUser, BaseModel):
+    project = models.IntegerField(choices=Project.choices, null=True)
     middle_name = models.CharField(max_length=150, blank=True)
 
     primary_phone = PhoneNumberField(null=True, db_index=True)
     secondary_phone = PhoneNumberField(null=True, db_index=True)
+    birth_date = models.DateField(null=True, blank=True)
 
     avatar = models.ForeignKey('common.Media', on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -40,6 +41,8 @@ class User(AbstractUser, BaseModel):
     district = models.ForeignKey('common.District', on_delete=models.SET_NULL, null=True, blank=True)
 
     bio = CKEditor5Field(validators=[MaxLengthValidator(500)], null=True, blank=True)
+
+    rating = GenericRelation("Rating", related_query_name='user_rating')
 
     def __str__(self):
         return self.get_full_name() or self.username

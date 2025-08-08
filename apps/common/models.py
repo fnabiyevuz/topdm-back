@@ -4,15 +4,14 @@ import uuid
 from django.db import models
 
 from apps.common.managers import SoftDeleteManager
+from apps.common.utils import tashkent_now
 
 
 class Project(models.IntegerChoices):
     ESTATE = 1, 'Real Estate'
     VEHICLE = 2, 'Vehicle'
-    PHONE = 3, 'Phone'
-    ELECTRONIC = 4, 'Electronic'
-    WORKER = 5, 'Worker'
-    SERVICE = 6, 'Service'
+    ELECTRONIC = 3, 'Electronic'
+    MASTER = 4, 'Master'
 
 
 class BaseModel(models.Model):
@@ -33,27 +32,29 @@ class BaseModel(models.Model):
         )
 
     def delete(self, using=None, keep_parents=False):
-        self.is_deleted = True
-        self.save(update_fields=["is_deleted"])
+        self.__class__.objects.filter(pk=self.pk).update(
+            is_deleted=True,
+            updated_at=tashkent_now()
+        )
 
     def restore(self):
-        self.is_deleted = False
-        self.save(update_fields=["is_deleted"])
+        self.__class__.objects.filter(pk=self.pk).update(
+            is_deleted=False,
+            updated_at=tashkent_now()
+        )
 
     def hard_delete(self, using=None, keep_parents=False):
         super().delete(using=using, keep_parents=keep_parents)
 
 
-class Country(BaseModel):
-    legacy_id = models.PositiveSmallIntegerField(null=True, blank=True)
+class Country(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.name
 
 
-class Region(BaseModel):
-    legacy_id = models.PositiveSmallIntegerField(null=True, blank=True)
+class Region(models.Model):
     pk = models.PositiveSmallIntegerField(null=True, blank=True)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name="regions")
     name = models.CharField(max_length=100)
@@ -65,8 +66,7 @@ class Region(BaseModel):
         return self.name
 
 
-class District(BaseModel):
-    legacy_id = models.PositiveSmallIntegerField(null=True, blank=True)
+class District(models.Model):
     region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name="districts")
     name = models.CharField(max_length=100)
 
@@ -77,8 +77,7 @@ class District(BaseModel):
         return self.name
 
 
-class Neighborhood(BaseModel):
-    legacy_id = models.PositiveSmallIntegerField(null=True, blank=True)
+class Neighborhood(models.Model):
     district = models.ForeignKey(District, on_delete=models.CASCADE, related_name="neighborhoods")
     name = models.CharField(max_length=100)
 
@@ -101,7 +100,8 @@ def upload_to(instance, filename):
     return f"media/{instance.file_type}/{uuid.uuid4()}_{filename}"
 
 
-class Media(BaseModel):
+class Media(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     file = models.FileField(upload_to=upload_to)
     file_type = models.IntegerField(choices=FileType.choices, default=FileType.OTHER)
     file_name = models.CharField(max_length=255, blank=True, null=True)
