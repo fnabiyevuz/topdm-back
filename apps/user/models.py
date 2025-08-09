@@ -42,7 +42,7 @@ class User(AbstractUser, BaseModel):
 
     bio = CKEditor5Field(validators=[MaxLengthValidator(500)], null=True, blank=True)
 
-    rating = GenericRelation("Rating", related_query_name='user_rating')
+    rating = GenericRelation("ads.Rating", related_query_name='user_rating')
 
     def __str__(self):
         return self.get_full_name() or self.username

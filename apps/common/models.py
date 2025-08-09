@@ -55,7 +55,6 @@ class Country(models.Model):
 
 
 class Region(models.Model):
-    pk = models.PositiveSmallIntegerField(null=True, blank=True)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name="regions")
     name = models.CharField(max_length=100)
 

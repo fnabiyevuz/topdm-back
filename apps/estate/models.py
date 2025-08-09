@@ -61,13 +61,13 @@ class Estate(Ads):
 
     facilities = models.ManyToManyField(EstateAdvantage, blank=True)
 
-    images = GenericRelation("Image", related_query_name='estate_image')
-    comments = GenericRelation("Comment", related_query_name='estate_comment')
-    likes = GenericRelation("Like", related_query_name='estate_like')
-    views = GenericRelation("View", related_query_name='estate_view')
-    bookmark = GenericRelation("Bookmark", related_query_name='estate_bookmark')
-    report = GenericRelation("Report", related_query_name='estate_report')
-    rating = GenericRelation("Rating", related_query_name='estate_rating')
+    images = GenericRelation("ads.Image", related_query_name='estate_image')
+    comments = GenericRelation("ads.Comment", related_query_name='estate_comment')
+    likes = GenericRelation("ads.Like", related_query_name='estate_like')
+    views = GenericRelation("ads.View", related_query_name='estate_view')
+    bookmark = GenericRelation("ads.Bookmark", related_query_name='estate_bookmark')
+    report = GenericRelation("ads.Report", related_query_name='estate_report')
+    rating = GenericRelation("ads.Rating", related_query_name='estate_rating')
 
     def __str__(self):
         return self.title
@@ -75,8 +75,6 @@ class Estate(Ads):
     class Meta:
         indexes = [
             models.Index(fields=["type", "purpose"]),
-            models.Index(fields=["price"]),
-            models.Index(fields=["region", "district"]),
         ]
         verbose_name = "Estate"
         verbose_name_plural = "Estates"

@@ -15,8 +15,8 @@ class ImageAdmin(admin.ModelAdmin):
 
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'content_type', 'object_id', 'text', 'created_at')
-    search_fields = ('text', 'user__first_name', 'user__last_name')
+    list_display = ('id', 'user', 'content_type', 'object_id', 'comment', 'created_at')
+    search_fields = ('comment', 'user__first_name', 'user__last_name')
     list_filter = ('created_at',)
     readonly_fields = ('content_object',)
 

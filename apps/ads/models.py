@@ -27,7 +27,7 @@ class PaymentStatus(models.IntegerChoices):
 
 
 class Ads(BaseModel):
-    owner = models.ForeignKey('user.User', on_delete=models.CASCADE, related_name="ads")
+    user = models.ForeignKey('user.User', on_delete=models.CASCADE, related_name="ads")
 
     title = models.CharField(max_length=255)
     slug = models.SlugField(max_length=500, db_index=True)
@@ -52,6 +52,13 @@ class Ads(BaseModel):
     vip_expiry_date = models.DateTimeField(null=True, blank=True)
     top_expiry_date = models.DateTimeField(null=True, blank=True)
     expiry_date = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        indexes = [
+            models.Index(fields=["price"]),
+            models.Index(fields=["region", "district"]),
+        ]
 
 
 class GenericBaseModel(BaseModel):
@@ -90,7 +97,6 @@ class Comment(GenericBaseModel):
 
 
 class Like(GenericBaseModel):
-
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -121,7 +127,6 @@ class View(GenericBaseModel):
 
 
 class Bookmark(GenericBaseModel):
-
     class Meta:
         constraints = [
             models.UniqueConstraint(
